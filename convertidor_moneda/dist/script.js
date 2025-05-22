@@ -8,58 +8,82 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-const form = document.getElementById("converter-form");
-const amountInput = document.getElementById("amount");
-const fromSelect = document.getElementById("from-currency");
-const toSelect = document.getElementById("to-currency");
-const resultDiv = document.getElementById("result");
+const formulario = document.getElementById("formulario-conversion");
+const campoCantidad = document.getElementById("cantidad");
+const selectorOrigen = document.getElementById("moneda-origen");
+const selectorDestino = document.getElementById("moneda-destino");
+const divResultado = document.getElementById("resultado");
 // API Key gratuita desde https://www.exchangerate-api.com/
 const API_KEY = "ebb851cfd1c9aa66e71c3934";
 const API_URL = `https://v6.exchangerate-api.com/v6/${API_KEY}/latest/USD`;
-function loadCurrencies() {
+// Función para mostrar errores centralizada
+function mostrarError(mensaje) {
+    divResultado.textContent = mensaje;
+    console.error(mensaje);
+}
+// Cargar monedas y restaurar última conversión
+function cargarMonedas() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const res = yield fetch(API_URL);
-            const data = yield res.json();
-            if (!data.conversion_rates)
+            const respuesta = yield fetch(API_URL);
+            const datos = yield respuesta.json();
+            if (!datos.conversion_rates)
                 throw new Error("Datos inválidos");
-            const currencies = Object.keys(data.conversion_rates);
-            currencies.forEach(currency => {
-                const option1 = new Option(currency, currency);
-                const option2 = new Option(currency, currency);
-                fromSelect.add(option1);
-                toSelect.add(option2);
+            const monedas = Object.keys(datos.conversion_rates);
+            monedas.forEach(moneda => {
+                const opcion1 = new Option(moneda, moneda);
+                const opcion2 = new Option(moneda, moneda);
+                selectorOrigen.add(opcion1);
+                selectorDestino.add(opcion2);
             });
-            fromSelect.value = "USD";
-            toSelect.value = "EUR";
+            // Valores por defecto
+            selectorOrigen.value = "USD";
+            selectorDestino.value = "EUR";
+            // Restaurar última conversión si existe
+            const guardado = localStorage.getItem("ultimaConversion");
+            if (guardado) {
+                const conversion = JSON.parse(guardado);
+                campoCantidad.value = conversion.amount;
+                selectorOrigen.value = conversion.from;
+                selectorDestino.value = conversion.to;
+                divResultado.textContent = `${conversion.amount} ${conversion.from} = ${conversion.converted} ${conversion.to}`;
+            }
         }
         catch (error) {
-            resultDiv.textContent = "Error al cargar monedas.";
-            console.error(error);
+            mostrarError("Error al cargar monedas.");
         }
     });
 }
-form.addEventListener("submit", (e) => __awaiter(void 0, void 0, void 0, function* () {
+// Convertir al enviar el formulario
+formulario.addEventListener("submit", (e) => __awaiter(void 0, void 0, void 0, function* () {
     e.preventDefault();
-    const amount = parseFloat(amountInput.value);
-    const from = fromSelect.value;
-    const to = toSelect.value;
-    if (isNaN(amount)) {
-        resultDiv.textContent = "Ingresa una cantidad válida.";
+    const cantidad = parseFloat(campoCantidad.value);
+    const desde = selectorOrigen.value;
+    const hacia = selectorDestino.value;
+    if (isNaN(cantidad)) {
+        mostrarError("Ingresa una cantidad válida.");
         return;
     }
     try {
-        const res = yield fetch(`https://v6.exchangerate-api.com/v6/${API_KEY}/latest/${from}`);
-        const data = yield res.json();
-        const rate = data.conversion_rates[to];
-        if (!rate)
+        const respuesta = yield fetch(`https://v6.exchangerate-api.com/v6/${API_KEY}/latest/${desde}`);
+        const datos = yield respuesta.json();
+        const tasa = datos.conversion_rates[hacia];
+        if (!tasa)
             throw new Error("Moneda no válida");
-        const converted = amount * rate;
-        resultDiv.textContent = `${amount} ${from} = ${converted.toFixed(2)} ${to}`;
+        const convertido = cantidad * tasa;
+        divResultado.textContent = `${cantidad} ${desde} = ${convertido.toFixed(2)} ${hacia}`;
+        // Guardar conversión en localStorage
+        const datosConversion = {
+            amount: cantidad,
+            from: desde,
+            to: hacia,
+            converted: convertido.toFixed(2)
+        };
+        localStorage.setItem("ultimaConversion", JSON.stringify(datosConversion));
     }
     catch (error) {
-        resultDiv.textContent = "Error en la conversión.";
-        console.error(error);
+        mostrarError("Error en la conversión.");
     }
 }));
-loadCurrencies();
+// Iniciar al cargar la página
+cargarMonedas();

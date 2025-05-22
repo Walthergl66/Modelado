@@ -1,61 +1,92 @@
-const form = document.getElementById("converter-form") as HTMLFormElement;
-const amountInput = document.getElementById("amount") as HTMLInputElement;
-const fromSelect = document.getElementById("from-currency") as HTMLSelectElement;
-const toSelect = document.getElementById("to-currency") as HTMLSelectElement;
-const resultDiv = document.getElementById("result") as HTMLDivElement;
+const formulario = document.getElementById("formulario-conversion") as HTMLFormElement;
+const campoCantidad = document.getElementById("cantidad") as HTMLInputElement;
+const selectorOrigen = document.getElementById("moneda-origen") as HTMLSelectElement;
+const selectorDestino = document.getElementById("moneda-destino") as HTMLSelectElement;
+const divResultado = document.getElementById("resultado") as HTMLDivElement;
 
 // API Key gratuita desde https://www.exchangerate-api.com/
 const API_KEY = "ebb851cfd1c9aa66e71c3934";
 const API_URL = `https://v6.exchangerate-api.com/v6/${API_KEY}/latest/USD`;
 
-async function loadCurrencies() {
+// Función para mostrar errores centralizada
+function mostrarError(mensaje: string) {
+  divResultado.textContent = mensaje;
+  console.error(mensaje);
+}
+
+// Cargar monedas y restaurar última conversión
+async function cargarMonedas() {
   try {
-    const res = await fetch(API_URL);
-    const data = await res.json();
+    const respuesta = await fetch(API_URL);
+    const datos = await respuesta.json();
 
-    if (!data.conversion_rates) throw new Error("Datos inválidos");
+    if (!datos.conversion_rates) throw new Error("Datos inválidos");
 
-    const currencies = Object.keys(data.conversion_rates);
-    currencies.forEach(currency => {
-      const option1 = new Option(currency, currency);
-      const option2 = new Option(currency, currency);
-      fromSelect.add(option1);
-      toSelect.add(option2);
+    const monedas = Object.keys(datos.conversion_rates);
+    monedas.forEach(moneda => {
+      const opcion1 = new Option(moneda, moneda);
+      const opcion2 = new Option(moneda, moneda);
+      selectorOrigen.add(opcion1);
+      selectorDestino.add(opcion2);
     });
 
-    fromSelect.value = "USD";
-    toSelect.value = "EUR";
+    // Valores por defecto
+    selectorOrigen.value = "USD";
+    selectorDestino.value = "EUR";
+
+    // Restaurar última conversión si existe
+    const guardado = localStorage.getItem("ultimaConversion");
+    if (guardado) {
+      const conversion = JSON.parse(guardado);
+      campoCantidad.value = conversion.amount;
+      selectorOrigen.value = conversion.from;
+      selectorDestino.value = conversion.to;
+      divResultado.textContent = `${conversion.amount} ${conversion.from} = ${conversion.converted} ${conversion.to}`;
+    }
+
   } catch (error) {
-    resultDiv.textContent = "Error al cargar monedas.";
-    console.error(error);
+    mostrarError("Error al cargar monedas.");
   }
 }
 
-form.addEventListener("submit", async (e) => {
+// Convertir al enviar el formulario
+formulario.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const amount = parseFloat(amountInput.value);
-  const from = fromSelect.value;
-  const to = toSelect.value;
+  const cantidad = parseFloat(campoCantidad.value);
+  const desde = selectorOrigen.value;
+  const hacia = selectorDestino.value;
 
-  if (isNaN(amount)) {
-    resultDiv.textContent = "Ingresa una cantidad válida.";
+  if (isNaN(cantidad)) {
+    mostrarError("Ingresa una cantidad válida.");
     return;
   }
 
   try {
-    const res = await fetch(`https://v6.exchangerate-api.com/v6/${API_KEY}/latest/${from}`);
-    const data = await res.json();
-    const rate = data.conversion_rates[to];
+    const respuesta = await fetch(`https://v6.exchangerate-api.com/v6/${API_KEY}/latest/${desde}`);
+    const datos = await respuesta.json();
+    const tasa = datos.conversion_rates[hacia];
 
-    if (!rate) throw new Error("Moneda no válida");
+    if (!tasa) throw new Error("Moneda no válida");
 
-    const converted = amount * rate;
-    resultDiv.textContent = `${amount} ${from} = ${converted.toFixed(2)} ${to}`;
+    const convertido = cantidad * tasa;
+    divResultado.textContent = `${cantidad} ${desde} = ${convertido.toFixed(2)} ${hacia}`;
+
+    // Guardar conversión en localStorage
+    const datosConversion = {
+      amount: cantidad,
+      from: desde,
+      to: hacia,
+      converted: convertido.toFixed(2)
+    };
+    localStorage.setItem("ultimaConversion", JSON.stringify(datosConversion));
   } catch (error) {
-    resultDiv.textContent = "Error en la conversión.";
-    console.error(error);
+    mostrarError("Error en la conversión.");
   }
 });
 
-loadCurrencies();
+// Iniciar al cargar la página
+cargarMonedas();
+
+
+//npx tsc inicializa el .js
