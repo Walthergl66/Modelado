@@ -9,13 +9,15 @@
 <body>
   <div class="container">
     <h1>Conversor de Monedas</h1>
-
+    <label for="amount">Cantidad:</label>
     <form id="converter-form">
       <input type="number" id="amount" placeholder="Cantidad" required />
 
       <div class="select-group">
+        <label for="de que moneda">De:</label>
         <select id="from-currency"></select>
         <span>→</span>
+        <label for="a que moneda">A:</label>
         <select id="to-currency"></select>
       </div>
 
